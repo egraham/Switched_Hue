@@ -235,14 +235,14 @@ def main():
     # Hue hub stuff
     # static IP set at router
     bridge_ip_address = "192.168.1.55"
-    #username = "Quotg6cHMlv5XSsF0jYMhmJNxi6wnnVMUKfBknWA" # Tauric hub
-    username = "d1nZ5y7ZzwzI97etVYsZ1lBj9EqfcX9-47KgVv3C" # "egraham.cens" on mom's hub
+    #username = "Quotg6c...BknWA" # Tauric hub
+    username = "d1nZ5y7Z...-47KgVv3C" # "egraham.cens" on mom's hub
     b = Bridge(bridge_ip_address, username)
     # lamps are: 
     lamps = {'Switched': 9, 'Controlled': 10, 'Signal': 11}
     
     # Log file stuff
-    filename = "Janet_lamps.csv"
+    filename = "Controlled_lamps.csv"
     lamps_header = ["Date_time", "Switched_reachable", "Switched_on", "Controlled_reachable", "Controlled_on", "Signal_reachable", "Signal_on", "Hub_error"] 
     lamps_status = ""
     
