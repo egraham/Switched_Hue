@@ -1,19 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun December 3, 2023
+Created on Sun Sep 16 15:35:28 2018
 
-@author: Eric Graham, egraham.cens at gmail.com
+@author: EG-Desk
 
 This script will monitor a 'Switched' hue lamp (one who's power will be turned on and off by a switch 
-   and thus make the lamp unreachable if no power).  If the Switched is switched (powered) on, then this script will
-   turn on a 'Controlled' lamp (a "slave" to the Switched) and a 'Signal' lamp (both will turn on when Switched
-   goes from unreachble to reachable).  This script will also turn on or off the Controlled lamp in parallel to the
-   Switched (if it is programatically turned on or off, e.g., with the Hue app), but otherwise
-   not change the Signal lamp.
-   
-This script will only function on a Windows machine (because of the keyboard capture, possibly other reasons) and 
-   should be run in a command terminal (at least not in the Spyder console because key capture doesn't work, although
-   it will run fine otherwise).
+   and thus make the lamp unreachable if no power) and then control both a 'Controlled' lamp (a "slave" to
+   the Switched) and a 'Signal' lamp (will turn on when Switched goes from unreachble to reachable but otherwise
+   is unaffected).
 
 ######################### Philips Hue instructions #########################
 
@@ -46,9 +40,6 @@ Possible sates of a lamp (color in parenthesis):
             ("colormode": "xy",)
 		}
 
-From this output, the number of the lamp that you want to make into the Switched, Controlled, and Signal should be 
-   recorded and put into the dictionary "lamps", below.
-
 ####################### End Philips Hue instructions #######################
 """
 from qhue import Bridge
@@ -62,7 +53,11 @@ import os
 import ctypes
 
 class colors:
-# Colors class:reset all colors with colors.reset
+# Colors class:reset all colors with colors.reset; two sub classes fg for foreground
+#  and bg for background; use as colors.subclass.colorname. 
+#  i.e. colors.fg.red or colors.bg.greenalso, the generic bold, disable,
+#  underline, reverse, strike through,
+#  and invisible work with the main class i.e. colors.bold
 # Commented unused values for cleanliness
 
     reset = '\033[0m'
@@ -105,7 +100,7 @@ class colors:
     #     lightgrey = '\033[47m'
         
     
-# Append to file times and status of all lamps of interest
+# Append to file times and status of all lamps
 def log_to_file(filename, lamps_status):
     if not lamps_status == "":
         try:
@@ -113,6 +108,8 @@ def log_to_file(filename, lamps_status):
                 writer = csv.writer(csvfile)
                 writer.writerow(lamps_status)
         except IOError:
+            print("")
+            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             print(f"{colors.reset}An {colors.fg.red}ERROR{colors.reset} was encountered while logging to file!")
             print("File %s does not exist (or other problem)!" % filename)
 
@@ -127,6 +124,8 @@ def get_status(b, lamps):
         # 'lampstatus' is a dictionary of all lights on the hub, not just the ones of interest
         all_lamps_status = b.lights()
     except:
+        print("")
+        print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
         print(f"{colors.reset}An {colors.fg.red}ERROR{colors.reset} was encountered while communicating with hub!")
         print("")
         # set error flag on lamps_status to True
@@ -158,8 +157,8 @@ def get_status(b, lamps):
             lamps_status['SignalO'] = False
         else: 
             lamps_status['SignalO'] = all_lamps_status[str(lamps['Signal'])]['state']['on']
-        
-        return lamps_status
+
+    return lamps_status
         
 
 # set the status ('state', either on or off) of a lamp through the hub, 
@@ -170,6 +169,8 @@ def set_status(b, lampnum, statevalue):
             b.lights[str(lampnum)].state(on=True)
             success_status = True
         except:
+            print("")
+            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             print(f"{colors.reset}An {colors.fg.red}ERROR{colors.reset} was encountered while communicating with hub!")
             print("Failed to set status to 'on':", lampnum, statevalue)
             print("")
@@ -179,6 +180,8 @@ def set_status(b, lampnum, statevalue):
             b.lights[str(lampnum)].state(on=False)
             success_status = True
         except:
+            print("")
+            print(datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             print(f"{colors.reset}An {colors.fg.red}ERROR{colors.reset} was encountered while communicating with hub!")
             print("Failed to set status to 'off':", lampnum, statevalue)
             print("")
@@ -231,14 +234,15 @@ def main():
     
     # Hue hub stuff
     # static IP set at router
-    bridge_ip_address = "192.168.1.50"
-    username = "d1nZ5d7ZzwzI97etVYdZ1lBj9EqfcX9d47KgVv3C" 
+    bridge_ip_address = "192.168.1.55"
+    #username = "Quotg6cHMlv5XSsF0jYMhmJNxi6wnnVMUKfBknWA" # Tauric hub
+    username = "d1nZ5y7ZzwzI97etVYsZ1lBj9EqfcX9-47KgVv3C" # "egraham.cens" on mom's hub
     b = Bridge(bridge_ip_address, username)
     # lamps are: 
     lamps = {'Switched': 9, 'Controlled': 10, 'Signal': 11}
     
     # Log file stuff
-    filename = "Controlled_lamps.csv"
+    filename = "Janet_lamps.csv"
     lamps_header = ["Date_time", "Switched_reachable", "Switched_on", "Controlled_reachable", "Controlled_on", "Signal_reachable", "Signal_on", "Hub_error"] 
     lamps_status = ""
     
@@ -260,17 +264,19 @@ def main():
     log_to_file(filename, lamps_file_output)
     
     # While running, check for status of Switched:
-    #   If Switched is off, check status of controlled.  If on, turn off.  
-    #   If Switched is on, check status of controlled.  If off, turn on.
-    #     If Switched is on and it had previously been unreachable (turned off at the switch), turn on Signal lamp.
-    #   If Switched is unreachable (turned off at the switch), check status of controlled.  If on, turn off. 
+    #   If Switched is off, check status of controlled.  If on, turn off.  If off, leave it alone.
+    #   If Switched is on, check status of controlled.  If on, leave on, if off, turn on.
+    #   If Switched is unreachable (turned off at the switch), check status of controlled.  If on, turn off.  If off, leave it alone.
+    #
+    # It may be that the hub does not update, or we want to do somethign else in the future, so all cases are represented
+    #   in the loop (e.g., if the controlled power is off)
     
     while running:
         now = datetime.datetime.now()
         time.sleep(1)
         
         # Keypress will stop the program gracefully and/or control the lights
-        try:  
+        try:  # used try so that if user pressed other than the given key error will not be shown
             if msvcrt.kbhit(): # if a key press is waiting, read the char
                 char = msvcrt.getch().decode('ASCII')
                 print("")
@@ -321,7 +327,7 @@ def main():
                 display_status(lamps_status)
                     
         except:
-            pass  # if user pressed a key other than the given key?
+            pass  # if user pressed a key other than the given key
         
         # if check_time seconds
         if now.second % check_time == 0:
